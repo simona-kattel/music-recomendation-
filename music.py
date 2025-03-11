@@ -3,12 +3,17 @@ import pandas as pd
 df = pd.read_csv("spotify_merged.csv" )
 genre_df = pd.read_csv("genre_music.csv" )
 
+print(df.info()) #checks the missing value of row and coloumn
 print(df.head())
+
+print(genre_df.info())
 print(genre_df.head())
 
+print(df.duplicated().sum())   # checks if there is any duplicate value
+print(genre_df.duplicated().sum())     #here sum is used as we want total count of whatever duplicate and null value is present in the data
 
-x= dataset.iloc[].values
-y= dataset.iloc[].values
+print(df.isnull().sum())
+print(genre_df.isnull().sum())    #checks if there is any null values
 
-from sklearn.model_selection import train_test_split
-x_train , x_test, y_train, y_split = train_test_split(x,y,test_size=0.2,random_state=42)
+df.drop_duplicates(inplace= True)
+genre_df.drop_duplicates(inplace=True)  #drops the duplicate value from the data
