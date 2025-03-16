@@ -1,5 +1,7 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
+import seaborn as sns
 # Load data
 df = pd.read_csv("spotify_merged.csv")
 genre_df = pd.read_csv("genre_music.csv")
@@ -21,14 +23,7 @@ print("Missing values in genre_df:\n", genre_df.isnull().sum())
 df.dropna(thresh=int(df.shape[1] * 0.6), inplace=True)  # Drop rows with >40% missing values
 genre_df.dropna(thresh=int(genre_df.shape[1] * 0.6), inplace=True)
 
-# Fill missing values
-df["popularity"].fillna(df["popularity"].median(), inplace=True)  # Fill popularity with median
-if "decade" in df.columns:
-    df["decade"].fillna("unknown", inplace=True)  # Fill missing decade values
 
-# Drop duplicate rows
-df.drop_duplicates(inplace=True)
-genre_df.drop_duplicates(inplace=True)
 
 # Fix column formatting
 df["track"] = df["track"].str.strip()
@@ -39,9 +34,22 @@ if "genre" in df.columns:
 if "genre" in genre_df.columns:
     genre_df["genre"] = genre_df["genre"].str.lower()
 
-# Save cleaned data
-df.to_csv("spotify_cleaned.csv", index=False)
-genre_df.to_csv("genre_music_cleaned.csv", index=False)
+
+
 
 print(df.info())
 print(df.head())
+
+plt.figure(figsize = (6,10))
+sns.boxplot(data = df)
+plt.xticks(rotation = 90)
+plt.show()
+
+plt.figure(figsize = (6,10))
+sns.boxplot(data = genre_df)
+plt.xticks(rotation = 90)
+plt.show()
+
+# Save cleaned data
+df.to_csv("spotify_cleaned.csv", index=False)
+genre_df.to_csv("genre_music_cleaned.csv", index=False)
