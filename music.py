@@ -1,7 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neighbors import NearestNeighbors
 
 # Load data
 df = pd.read_csv("spotify_merged.csv")
@@ -69,3 +70,61 @@ df.to_csv("spotify_cleaned.csv", index=False)
 genre_df.to_csv("genre_music_cleaned.csv", index=False)
 
 print("\nData cleaning completed! Ready for KNN model.")
+
+# Load cleaned data
+df = pd.read_csv("spotify_cleaned.csv")
+genre_df = pd.read_csv("genre_music_cleaned.csv")
+
+# Encode categorical data (convert genre into numerical values)
+if "genre" in df.columns:
+    le = LabelEncoder()
+    df["genre_encoded"] = le.fit_transform(df["genre"])
+
+# Selecting features for KNN
+features = ["tempo", "energy", "danceability", "valence", "acousticness", "speechiness", "genre_encoded"]
+
+# Handle missing numeric values
+df.dropna(subset=features, inplace=True)
+
+# Scale numerical data
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df[features])
+
+# Train KNN model
+knn = NearestNeighbors(n_neighbors=6, metric='euclidean')  # 6 because first one will be the song itself
+knn.fit(df_scaled)
+
+def recommend_songs(fav_song, fav_genre):
+    """Recommend 5 songs based on user's favorite song and genre"""
+    # Filter dataset by genre
+    genre_filtered_df = df[df["genre"] == fav_genre]
+
+    if genre_filtered_df.empty:
+        print("No songs found for this genre. Try another genre!")
+        return []
+    
+    # Find the selected song
+    song_row = genre_filtered_df[genre_filtered_df["track"].str.lower() == fav_song.lower()]
+    
+    if song_row.empty:
+        print("Sorry, your favorite song is not in our dataset.")
+        return []
+    
+    # Extract the song index
+    song_index = song_row.index[0]
+    
+    # Find nearest neighbors
+    distances, indices = knn.kneighbors([df_scaled[song_index]])
+    
+    # Get recommended song names
+    recommended_songs = df.iloc[indices[0][1:]]  # Exclude the first song (itself)
+    return recommended_songs[["track", "artist", "genre"]]
+
+# Get user input
+fav_song = input("Tell me your favorite song: ")
+fav_genre = input("Tell me your favorite genre: ")
+
+# Get recommendations
+recommendations = recommend_songs(fav_song, fav_genre)
+print("\nRecommended Songs for You:")
+print(recommendations)
