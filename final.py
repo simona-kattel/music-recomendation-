@@ -16,12 +16,23 @@ print("\nOriginal Genre Data:")
 print(genre_df.info())
 print(genre_df.head())
 
-# Check if 'genre' column exists in the Spotify dataset and add placeholder if missing
-if 'genre' not in df.columns:
-    print("The 'genre' column is missing from the Spotify dataset. Adding a placeholder genre column.")
-    df['genre'] = 'unknown'
+# Since the Spotify dataset doesn't have a genre column,
+# we merge genre_df with df using the 'track' column.
+if 'track' in df.columns and 'track' in genre_df.columns:
+    df = df.merge(genre_df[['track', 'genre']], on='track', how='left')
+else:
+    print("The 'track' column is missing in one of the datasets.")
 
-# Remove duplicates
+# Fill missing genres with a placeholder
+df['genre'] = df['genre'].fillna("unknown")
+
+# Clean and standardize the genre data: remove extra spaces and convert to lowercase
+df['genre'] = df['genre'].str.strip().str.lower()
+
+# Debug: Print unique genres in the merged dataset
+print("Unique genres in merged Spotify dataset:", df['genre'].unique())
+
+# Remove duplicates from both datasets
 df.drop_duplicates(inplace=True)
 genre_df.drop_duplicates(inplace=True)
 
@@ -29,17 +40,11 @@ genre_df.drop_duplicates(inplace=True)
 df.dropna(thresh=int(df.shape[1] * 0.6), inplace=True)
 genre_df.dropna(thresh=int(genre_df.shape[1] * 0.6), inplace=True)
 
-# Standardize column formats
+# Standardize column formats for 'track' and 'artist'
 df["track"] = df["track"].str.strip()
 df["artist"] = df["artist"].str.strip().str.capitalize()
 
-# Convert genres to lowercase
-if "genre" in df.columns:
-    df["genre"] = df["genre"].str.lower()
-if "genre" in genre_df.columns:
-    genre_df["genre"] = genre_df["genre"].str.lower()
-
-# Handle missing values in numeric columns
+# Handle missing values in numeric columns by filling with median
 numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
 for col in numeric_cols:
     df[col].fillna(df[col].median(), inplace=True)
@@ -62,23 +67,26 @@ else:
     # Selecting features for KNN
     features = ["tempo", "energy", "danceability", "valence", "acousticness", "speechiness", "genre_encoded"]
 
-    # Handle missing numeric values in selected features
+    # Drop rows with missing values in selected features and reset index
     df.dropna(subset=features, inplace=True)
     df.reset_index(drop=True, inplace=True)
 
-    # Scale numerical data
+    # Scale numerical data for KNN
     scaler = StandardScaler()
     df_scaled = scaler.fit_transform(df[features])
 
     # Train KNN model
-    knn = NearestNeighbors(n_neighbors=6, metric='euclidean')  # 6 because the first one will be the song itself
+    knn = NearestNeighbors(n_neighbors=6, metric='euclidean')  # 6 because the first one is the song itself
     knn.fit(df_scaled)
 
 def recommend_songs(fav_song, fav_genre):
     """
     Recommend 5 songs based on user's favorite song and genre.
     """
-    # Filter dataset by genre
+    # Debug: Print the unique genres available in the dataset
+    print("Unique genres in dataset:", df['genre'].unique())
+    
+    # Filter dataset by genre (case-insensitive)
     genre_filtered_df = df[df["genre"] == fav_genre.lower()]
     
     if genre_filtered_df.empty:
@@ -86,7 +94,7 @@ def recommend_songs(fav_song, fav_genre):
         # Return an empty DataFrame with appropriate columns
         return pd.DataFrame(columns=["track", "artist", "genre"])
 
-    # Find the selected song
+    # Find the selected song (case-insensitive matching)
     song_row = genre_filtered_df[genre_filtered_df["track"].str.lower() == fav_song.lower()]
 
     if song_row.empty:
@@ -97,11 +105,11 @@ def recommend_songs(fav_song, fav_genre):
     # Extract the song index
     song_index = song_row.index[0]
 
-    # Find nearest neighbors
+    # Find nearest neighbors based on the selected song's features
     distances, indices = knn.kneighbors([df_scaled[song_index]])
     
-    # Get recommended song names
-    recommended_songs = df.iloc[indices[0][1:]]  # Exclude the first song (itself)
+    # Get recommended song names (excluding the first one, which is the song itself)
+    recommended_songs = df.iloc[indices[0][1:]]
     return recommended_songs[["track", "artist", "genre"]]
 
 # User input for favorite song and genre
